@@ -1,26 +1,38 @@
 ---
-title: "R Notebook"
-output: html_notebook
+title: "Water Sample Code"
+output:
+  html_notebook: default
+  pdf_document: default
 ---
 
 This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
 
 Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
 
+START CODE
+
+
 adding a clearance rate column to the data set water_sample_data
 ```{r}
 water_sample_data <- within(water_sample_data, clearance.rate <- ((volume/(1*time))*log(initial.conc/final.conc)))
+print(water_sample_data)
 ```
 
 ```{r}
 library(ggplot2)
 
-ggplot(water_sample_data, aes(x = mussel.Weight, y = clearance.rate)) + geom_point() + geom_smooth(method = "lm")
+ggplot(water_sample_data, aes(x = mussel.Weight, y = clearance.rate)) + geom_point() + geom_smooth(method = "lm") +
+  xlab("Mussel Weight (g)") + ylab("Clearance Rate (mL/H)")
 ```
 ```{r}
-ggplot(water_sample_data, aes(x = initial.conc, y = clearance.rate)) + geom_point() + geom_smooth(method = "lm")
+ggplot(water_sample_data, aes(x = initial.conc, y = clearance.rate)) + geom_point() + geom_smooth(method = "lm") +
+  xlab("Inital Algae Concentration (cells/mL)") + ylab("Clearance Rate (mL/H)")
 ```
 
+
+
+
+END CODE
 
 Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
 
