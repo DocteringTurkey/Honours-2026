@@ -7,9 +7,20 @@ This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute
 
 Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
 
+adding a clearance rate column to the data set water_sample_data
 ```{r}
-plot(cars)
+water_sample_data <- within(water_sample_data, clearance.rate <- ((volume/(1*time))*log(initial.conc/final.conc)))
 ```
+
+```{r}
+library(ggplot2)
+
+ggplot(water_sample_data, aes(x = mussel.Weight, y = clearance.rate)) + geom_point() + geom_smooth(method = "lm")
+```
+```{r}
+ggplot(water_sample_data, aes(x = initial.conc, y = clearance.rate)) + geom_point() + geom_smooth(method = "lm")
+```
+
 
 Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
 
