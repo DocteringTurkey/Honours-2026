@@ -28,8 +28,85 @@ ggplot(water_sample_data, aes(x = mussel.Weight, y = clearance.rate)) + geom_poi
 ggplot(water_sample_data, aes(x = initial.conc, y = clearance.rate)) + geom_point() + geom_smooth(method = "lm") +
   xlab("Inital Algae Concentration (cells/mL)") + ylab("Clearance Rate (mL/H)")
 ```
+```{r}
+library(dplyr)
+```
+
+```{r}
+summary_df_h0 <- water_sample_1 %>%
+  group_by(Treatment) %>%
+  summarise(
+    n = n(),
+    mean_val = mean(hour.zero, na.rm = TRUE),
+    sd_val = sd(hour.zero, na.rm = TRUE),
+    se_val = sd_val / sqrt(n)
+  )
+```
+```{r}
+summary_df_h1 <- water_sample_1 %>%
+  group_by(Treatment) %>%
+  summarise(
+    n = n(),
+    mean_val = mean(hour.one, na.rm = TRUE),
+    sd_val = sd(hour.one, na.rm = TRUE),
+    se_val = sd_val / sqrt(n)
+  )
+```
+```{r}
+summary_df_h2 <- water_sample_1 %>%
+  group_by(Treatment) %>%
+  summarise(
+    n = n(),
+    mean_val = mean(hour.two, na.rm = TRUE),
+    sd_val = sd(hour.two, na.rm = TRUE),
+    se_val = sd_val / sqrt(n)
+  )
+```
+```{r}
+summary_df_h3 <- water_sample_1 %>%
+  group_by(Treatment) %>%
+  summarise(
+    n = n(),
+    mean_val = mean(final.three, na.rm = TRUE),
+    sd_val = sd(final.three, na.rm = TRUE),
+    se_val = sd_val / sqrt(n)
+  )
+```
+```{r}
+summary_df <- bind_rows(
+  summary_df_h0 %>% mutate(hour = 0),
+  summary_df_h1 %>% mutate(hour = 1),
+  summary_df_h2 %>% mutate(hour = 2),
+  summary_df_h3 %>% mutate(hour = 3)
+)
+```
+```{r}
+as.data.frame(summary_df)
+```
 
 
+```{r}
+plot_summary <- function(money){ 
+  summary_df %>%
+    filter(Treatment == money) %>%
+    ggplot(aes(x = hour, y = mean_val)) + 
+    geom_point() + 
+    geom_smooth(method = "lm") +
+    ggtitle(money, "Algae starting concentration over time") +
+    xlab("Time (hr)") + ylab("Algae concentration (cells/ml)") + 
+    geom_errorbar(aes(ymin = mean_val - se_val, ymax = mean_val + se_val), 
+                                                                             width = 0.1,
+                                                                             color = "black",
+                                                                             linewidth = 0.5)
+}
+```
+
+```{r}
+plot_summary("Low")
+plot_summary("Medium")
+plot_summary("High")
+plot_summary("Highest")
+```
 
 
 END CODE
