@@ -86,12 +86,12 @@ as.data.frame(summary_df)
 
 
 ```{r}
-plot_summary <- function(money){ 
+plot_summary <- function(money,c){ 
   summary_df %>%
     filter(Treatment == money) %>%
     ggplot(aes(x = hour, y = mean_val)) + 
     geom_point() + 
-    geom_smooth(method = "lm") +
+    geom_smooth(method = "lm", colour = c ) +
     ggtitle(money, "Algae starting concentration over time") +
     xlab("Time (hr)") + ylab("Algae concentration (cells/ml)") + 
     geom_errorbar(aes(ymin = mean_val - se_val, ymax = mean_val + se_val), 
@@ -102,10 +102,86 @@ plot_summary <- function(money){
 ```
 
 ```{r}
-plot_summary("Low")
-plot_summary("Medium")
-plot_summary("High")
-plot_summary("Highest")
+plot_low <- plot_summary("Low", "red")
+plot_medium <- plot_summary("Medium", "blue")
+plot_high <- plot_summary("High", "green")
+plot_highest <- plot_summary("Highest", "violet")
+```
+```{r}
+library(cowplot)
+```
+```{r}
+plot_grid(plot_low, plot_medium, plot_high, plot_highest)
+```
+
+
+```{r}
+ ggplot(summary_df, aes(x = hour, y = mean_val, colour = Treatment)) + 
+    geom_point() + 
+    geom_smooth(method = "lm", se = FALSE ) +
+    ggtitle("Algae starting concentration over time") +
+    xlab("Time (hr)") + ylab("Algae concentration (cells/ml") + 
+    geom_errorbar(aes(ymin = mean_val - se_val, ymax = mean_val + se_val), 
+                                                                             width = 0.1,
+                                                                             color = "black",
+                                                                             linewidth = 0.5)
+```
+```{r}
+CR_OT <- summary_df %>%
+  group_by(Treatment) %>%
+  transmute("hr 0-1" = ((900/(1*1))*log(mean_val[hour == 0]/ mean_val[hour == 1])),
+                "hr 1-2" = ((900/(1*1))*log(mean_val[hour == 1]/ mean_val[hour == 2])),
+                "hr 2-3" = ((900/(1*1))*log(mean_val[hour == 2]/ mean_val[hour == 3])))
+
+```
+```{r}
+CR_OT <- unique(CR_OT)
+```
+```{r}
+library(tidyr)
+```
+```{r}
+CR_OT2 <- CR_OT %>%
+  pivot_longer(
+    cols = starts_with("hr"),
+    names_to = "interval",
+    values_to = "clearance.rate"
+  )
+```
+```{r}
+CR_OT2 <- CR_OT2 %>%
+  mutate(interval = recode(interval,
+                               "hr 0-1" = 1,
+                               "hr 1-2" = 2,
+                               "hr 2-3" = 3))
+```
+
+
+
+```{r}
+ggplot(CR_OT2, aes(x = interval, y = clearance.rate, colour = Treatment)) + 
+    geom_point() + 
+    geom_smooth(method = "lm", se = FALSE) +
+    ggtitle("Clearance rate over time") +
+    xlab("Time interval") + ylab("Clearance rate (ml/hr)")
+```
+```{r}
+water_sample_1 <- within(water_sample_1, clearance.rate <- ((volume/(1*time))*log(hour.zero/final.three)))
+print(water_sample_1)
+```
+
+```{r}
+model <- lm(clearance.rate ~ mussel.Weight * Treatment, data = water_sample_1)
+anova(model)
+summary(model)
+```
+```{r}
+model <- lm(clearance.rate ~ mussel.Weight + Treatment, data = water_sample_1)
+anova(model)
+summary(model)
+```
+```{r}
+ggplot(water_sample_1, aes(x = mussel.Weight, y = clearance.rate, colour = Treatment)) + geom_point() + geom_smooth(method = "lm", se = FALSE)
 ```
 
 
