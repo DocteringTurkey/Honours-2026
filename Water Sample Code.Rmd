@@ -166,11 +166,6 @@ ggplot(CR_OT2, aes(x = interval, y = clearance.rate, colour = Treatment)) +
     xlab("Time interval") + ylab("Clearance rate (ml/hr)")
 ```
 ```{r}
-water_sample_1 <- within(water_sample_1, clearance.rate <- ((volume/(1*time))*log(hour.zero/final.three)))
-print(water_sample_1)
-```
-
-```{r}
 model <- lm(clearance.rate ~ mussel.Weight * Treatment, data = water_sample_1)
 anova(model)
 summary(model)
@@ -183,6 +178,127 @@ summary(model)
 ```{r}
 ggplot(water_sample_1, aes(x = mussel.Weight, y = clearance.rate, colour = Treatment)) + geom_point() + geom_smooth(method = "lm", se = FALSE)
 ```
+
+```{r}
+water_sample_1 <- within(water_sample_1, clearance.rate.overall <- ((volume/(1*time))*log(hour.zero/final.three)))
+print(water_sample_1)
+```
+```{r}
+water_sample_1 <- within(water_sample_1, clearance.rate.interval_1 <- ((volume/(1*1))*log(hour.zero/hour.one)))
+water_sample_1 <- within(water_sample_1, clearance.rate.interval_2 <- ((volume/(1*1))*log(hour.one/hour.two)))
+water_sample_1 <- within(water_sample_1, clearance.rate.interval_3 <- ((volume/(1*1))*log(hour.two/final.three))/mussel.Weight)
+```
+```{r}
+CR_interval1 <- water_sample_1 %>%
+  group_by(Treatment) %>%
+  summarise(
+    n = n(),
+    mean_val = mean(clearance.rate.interval_1, na.rm = TRUE),
+    sd_val = sd(clearance.rate.interval_1, na.rm = TRUE),
+    se_val = sd_val / sqrt(n)
+  )
+  
+```
+```{r}
+CR_interval2 <- water_sample_1 %>%
+  group_by(Treatment) %>%
+  summarise(
+    n = n(),
+    mean_val = mean(clearance.rate.interval_2, na.rm = TRUE),
+    sd_val = sd(clearance.rate.interval_2, na.rm = TRUE),
+    se_val = sd_val / sqrt(n)
+  )
+```
+
+```{r}
+CR_interval3 <- water_sample_1 %>%
+  group_by(Treatment) %>%
+  summarise(
+    n = n(),
+    mean_val = mean(clearance.rate.interval_3, na.rm = TRUE),
+    sd_val = sd(clearance.rate.interval_3, na.rm = TRUE),
+    se_val = sd_val / sqrt(n)
+  )
+```
+```{r}
+print(water_sample_1)
+```
+
+
+```{r}
+summary_cr <- bind_rows(
+  CR_interval1 %>% mutate(interval = 1),
+  CR_interval2 %>% mutate(interval = 2),
+  CR_interval3 %>% mutate(interval = 3)
+)
+```
+```{r}
+ggplot(summary_cr, aes(x = interval, y = mean_val, colour = Treatment)) + 
+    geom_point() + 
+    geom_line() +
+    xlab("hour interval") + ylab("Clearnace Rate (ml/hr)") + 
+    geom_errorbar(aes(ymin = mean_val - se_val, ymax = mean_val + se_val), 
+                                                                             width = 0.1,
+                                                                             color = "black",
+                                                                             linewidth = 0.5)
+```
+```{r}
+ggplot(summary_cr, aes(x = interval, y = mean_val, colour = Treatment)) + 
+    geom_point() + 
+    geom_line() +
+    xlab("hour interval") + ylab("Clearance Rate (ml/hr)")
+```
+```{r}
+sum_cr <- water_sample_1%>%
+  group_by(Treatment)%>%
+  summarise(
+    n = n(),
+    mean_val = mean(clearance.rate, na.rm = TRUE),
+    sd_val = sd(clearance.rate, na.rm = TRUE),
+    se_val = sd_val / sqrt(n)
+  )
+  
+```
+
+```{r}
+m1 <- lm(log(clearance.rate) ~ log(mussel.Weight) + hour.zero, data = water_sample_1)
+anova(m1)
+summary(m1)
+
+```
+
+```{r}
+plot(m1)
+```
+
+```{r}
+m2 <- lm(log(clearance.rate) ~ log(mussel.Weight) + Treatment, data = water_sample_1)
+anova(m2)
+summary(m2)
+```
+```{r}
+ggplot(summary_df_h0, aes(x = Treatment, y = mean_val, fill = Treatment)) + 
+  geom_col() + 
+  geom_errorbar(aes(ymin = mean_val - se_val, ymax = mean_val + se_val), 
+                                                                             width = 0.1,
+                                                                             color = "black",
+                                                                             linewidth = 0.5)
+```
+```{r}
+m3 <- aov(hour.zero ~ Treatment, data = water_sample_1)
+
+summary(m3)
+```
+```{r}
+m3
+```
+```{r}
+TukeyHSD(m3)
+```
+
+
+
+
 
 
 END CODE
