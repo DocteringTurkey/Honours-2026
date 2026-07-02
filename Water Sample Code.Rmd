@@ -246,8 +246,19 @@ ggplot(summary_cr, aes(x = interval, y = mean_val, colour = Treatment)) +
 ggplot(summary_cr, aes(x = interval, y = mean_val, colour = Treatment)) + 
     geom_point() + 
     geom_line() +
-    xlab("hour interval") + ylab("Clearance Rate (ml/hr)")
+    xlab("Interval") + ylab("Clearance Rate (ml/hr)")
 ```
+```{r}
+ggplot(water_sample_1, aes(x = mussel.Weight, y = log(clearance.rate), colour = Treatment)) + 
+    geom_point() + 
+    geom_line() +
+    xlab("Mussel weight(g)") + ylab("log of Clearance Rate")
+```
+```{r}
+
+```
+
+
 ```{r}
 sum_cr <- water_sample_1%>%
   group_by(Treatment)%>%
@@ -261,42 +272,171 @@ sum_cr <- water_sample_1%>%
 ```
 
 ```{r}
-m1 <- lm(log(clearance.rate) ~ log(mussel.Weight) + hour.zero, data = water_sample_1)
+m3 <- lm(log(clearance.rate) ~ log(mussel.Weight) + hour.zero, data = water_sample_1)
+anova(m3)
+summary(m3)
+
+```
+
+```{r}
+plot(m3)
+```
+
+```{r}
+m1 <- lm(log(clearance.rate) ~ log(mussel.Weight) + Treatment, data = water_sample_1)
 anova(m1)
 summary(m1)
-
-```
-
-```{r}
-plot(m1)
-```
-
-```{r}
-m2 <- lm(log(clearance.rate) ~ log(mussel.Weight) + Treatment, data = water_sample_1)
-anova(m2)
-summary(m2)
 ```
 ```{r}
 ggplot(summary_df_h0, aes(x = Treatment, y = mean_val, fill = Treatment)) + 
   geom_col() + 
+  ylab("Initial algae concentration (cells/ml)") +
   geom_errorbar(aes(ymin = mean_val - se_val, ymax = mean_val + se_val), 
                                                                              width = 0.1,
                                                                              color = "black",
                                                                              linewidth = 0.5)
 ```
 ```{r}
-m3 <- aov(hour.zero ~ Treatment, data = water_sample_1)
+m4 <- aov(hour.zero ~ Treatment, data = water_sample_1)
 
-summary(m3)
+summary(m4)
 ```
 ```{r}
-m3
+m4
 ```
 ```{r}
-TukeyHSD(m3)
+TukeyHSD(m4)
+```
+```{r}
+m2 <- lm(log(clearance.rate) ~ log(mussel.Weight), data = water_sample_1)
+
+summary(m2)
+```
+```{r}
+m5 <- lm(log(clearance.rate) ~ Treatment, data = water_sample_1)
+summary(m5)
+```
+```{r}
+library(emmeans)
+library(tidyverse)
 ```
 
+```{r}
+set.seed(42)
+dat <- tibble(
+  animal_id = factor(1:12),
+  concentration = factor(rep(c("C", "L", "M", "H"),each = 3),
+                         levels = c("C", "L", "M", "H")),
+  weight = runif(12,0.5, 3.0),
+  clearance_rate = rnorm(12, mean = 5, sd = 1.5)
+)%>%
+  mutate(
+    log_cr = log(clearance_rate),
+    log_weight = log(weight)
+  )
+```
+```{r}
+dat1 <- tibble(
+  animal_id = water_sample_1$mussel.Id,
+  concentration = water_sample_1$Treatment,
+  weight = water_sample_1$mussel.Weight,
+  clearance_rate = water_sample_1$clearance.rate
+)%>%
+  mutate(
+    log_cr = log(clearance_rate),
+    log_weight = log(weight)
+  )
+```
+```{r}
+# ── Model 1: full — weight x concentration interaction ───────────────────────
+mod1 <- lm(log_cr ~ log_weight * concentration, data = dat1)
+ 
+# ── Model 2: additive — weight and concentration as main effects only ─────────
+mod2 <- lm(log_cr ~ log_weight + concentration, data = dat1)
+ 
+# ── Model 3: concentration only ───────────────────────────────────────────────
+mod3 <- lm(log_cr ~ concentration, data = dat1)
+ 
+# ── Model 4: weight only ─────────────────────────────────────────────────────
+mod4 <- lm(log_cr ~ log_weight, data = dat1)
+ 
+# ── Model 5: null ────────────────────────────────────────────────────────────
+mod5 <- lm(log_cr ~ 1, data = dat1)
+```
 
+```{r}
+# ── AIC overview ─────────────────────────────────────────────────────────────
+AIC(mod1, mod2, mod3, mod4, mod5)
+ 
+# ── Nested LRT comparisons ───────────────────────────────────────────────────
+ 
+# Test weight x concentration interaction: is effect of weight on
+# clearance rate different between concentration treatments?
+anova(mod1, mod2)
+ 
+# Test weight term: does size explain variance after accounting for concentration?
+anova(mod2, mod3)
+ 
+# Test concentration term: does treatment explain variance after weight?
+anova(mod2, mod4)
+```
+
+```{r}
+# Update mod_best based on selection results above
+mod_best <- mod2   # placeholder — update as needed
+ 
+summary(mod_best)
+anova(mod_best)
+ 
+# ── Check assumptions ────────────────────────────────────────────────────────
+par(mfrow = c(2, 2))
+plot(mod_best)
+ 
+# ── Post-hoc pairwise comparisons between concentration levels ────────────────
+emmeans(mod_best, pairwise ~ concentration, adjust = "tukey")
+ 
+# ── Plot clearance rate by concentration ─────────────────────────────────────
+ggplot(dat1, aes(x = concentration, y = exp(log_cr))) +
+  geom_jitter(width = 0.1, size = 3, alpha = 0.7) +
+  stat_summary(fun = mean, geom = "point", size = 4, colour = "red") +
+  stat_summary(fun.data = mean_se, geom = "errorbar",
+               width = 0.15, colour = "red", linewidth = 0.8) +
+  labs(
+    x = "Algae concentration treatment",
+    y = "Clearance rate (mL/hr)"
+  ) +
+  theme_classic(base_size = 12)
+```
+
+```{r}
+# Range of sample sizes to test
+n_range <- seq(6, 60, by = 6)
+ 
+power_results <- map_dbl(n_range, function(n) {
+  # Simulate 500 datasets of size n with similar effect size to your data
+  sims <- replicate(500, {
+    sim_dat <- tibble(
+      concentration = factor(rep(c("C", "L", "M", "H"), length.out = n),
+                             levels = c("C", "L", "M", "H")),
+      log_weight    = rnorm(n, mean = mean(dat1$log_weight), sd = sd(dat1$log_weight)),
+      log_cr        = rnorm(n, mean = mean(dat1$log_cr), sd = sd(dat1$log_cr))
+    )
+    mod_sim <- lm(log_cr ~ log_weight + concentration, data = sim_dat)
+    anova(mod_sim)["concentration", "Pr(>F)"] < 0.05
+  })
+  mean(sims)
+})
+ 
+tibble(n = n_range, power = power_results) %>%
+  ggplot(aes(x = n, y = power)) +
+  geom_line(linewidth = 1, colour = "#2A9D8F") +
+  geom_point(size = 2) +
+  geom_hline(yintercept = 0.8, linetype = "dashed", colour = "#E63946") +
+  annotate("text", x = max(n_range), y = 0.82, label = "80% power",
+           hjust = 1, colour = "#E63946") +
+  labs(x = "Sample size (n)", y = "Power") +
+  theme_classic()
+```
 
 
 
