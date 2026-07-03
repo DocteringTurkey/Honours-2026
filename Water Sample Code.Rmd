@@ -166,6 +166,13 @@ ggplot(CR_OT2, aes(x = interval, y = clearance.rate, colour = Treatment)) +
     xlab("Time interval") + ylab("Clearance rate (ml/hr)")
 ```
 ```{r}
+water_sample_1 <- within(water_sample_1, clearance.rate <- ((volume/(1*time))*log(hour.zero/final.three)))
+print(water_sample_1)
+
+```
+
+
+```{r}
 model <- lm(clearance.rate ~ mussel.Weight * Treatment, data = water_sample_1)
 anova(model)
 summary(model)
@@ -179,10 +186,7 @@ summary(model)
 ggplot(water_sample_1, aes(x = mussel.Weight, y = clearance.rate, colour = Treatment)) + geom_point() + geom_smooth(method = "lm", se = FALSE)
 ```
 
-```{r}
-water_sample_1 <- within(water_sample_1, clearance.rate.overall <- ((volume/(1*time))*log(hour.zero/final.three)))
-print(water_sample_1)
-```
+
 ```{r}
 water_sample_1 <- within(water_sample_1, clearance.rate.interval_1 <- ((volume/(1*1))*log(hour.zero/hour.one)))
 water_sample_1 <- within(water_sample_1, clearance.rate.interval_2 <- ((volume/(1*1))*log(hour.one/hour.two)))
@@ -348,6 +352,14 @@ dat1 <- tibble(
   )
 ```
 ```{r}
+dat1 <- dat1%>%
+  mutate(concentration = factor(concentration, 
+                                levels = c("Low", "Medium", "High", "Highest")))
+```
+
+
+
+```{r}
 # ── Model 1: full — weight x concentration interaction ───────────────────────
 mod1 <- lm(log_cr ~ log_weight * concentration, data = dat1)
  
@@ -415,7 +427,7 @@ dat1$concentration <- factor(dat1$concentration,
 
 ```{r}
 # Range of sample sizes to test
-n_range <- seq(6, 60, by = 6)
+n_range <- seq(12, 60, by = 6)
  
 power_results <- map_dbl(n_range, function(n) {
   # Simulate 500 datasets of size n with similar effect size to your data
