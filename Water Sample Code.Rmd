@@ -409,18 +409,33 @@ ggplot(dat1, aes(x = concentration, y = exp(log_cr))) +
 ```
 
 ```{r}
+dat1$concentration <- factor(dat1$concentration,
+                             levels = c("Low", "Medium","High", "Highest"))
+```
+
+```{r}
 # Range of sample sizes to test
 n_range <- seq(6, 60, by = 6)
  
 power_results <- map_dbl(n_range, function(n) {
   # Simulate 500 datasets of size n with similar effect size to your data
   sims <- replicate(500, {
-    sim_dat <- tibble(
-      concentration = factor(rep(c("C", "L", "M", "H"), length.out = n),
-                             levels = c("C", "L", "M", "H")),
-      log_weight    = rnorm(n, mean = mean(dat1$log_weight), sd = sd(dat1$log_weight)),
-      log_cr        = rnorm(n, mean = mean(dat1$log_cr), sd = sd(dat1$log_cr))
-    )
+   sim_dat <- tibble(
+  concentration = factor(
+  rep(c("Low", "Medium","High", "Highest"), length.out = n),
+  levels = c("Low", "Medium","High", "Highest")),
+  log_weight = rnorm(n,
+                     mean = mean(dat1$log_weight),
+                     sd = sd(dat1$log_weight))
+)
+
+# Generate log clearance rate from your fitted model
+mu <- predict(mod2, newdata = sim_dat)
+
+sim_dat$log_cr <- rnorm(n,
+                        mean = mu,
+                        sd = sigma(mod2)
+                        )
     mod_sim <- lm(log_cr ~ log_weight + concentration, data = sim_dat)
     anova(mod_sim)["concentration", "Pr(>F)"] < 0.05
   })
@@ -436,6 +451,140 @@ tibble(n = n_range, power = power_results) %>%
            hjust = 1, colour = "#E63946") +
   labs(x = "Sample size (n)", y = "Power") +
   theme_classic()
+```
+```{r}
+power_df <- tibble(
+  n = n_range,
+  power = power_results
+)
+
+power_df %>%
+  filter(power >= 0.8) %>%
+  slice(1)
+```
+```{r}
+power_df <- tibble(
+  n = n_range,
+  power = power_results
+)
+
+power_df %>%
+  filter(power >= 0.9) %>%
+  slice(1)
+```
+```{r}
+power_df <- tibble(
+  n = n_range,
+  power = power_results
+)
+
+power_df %>%
+  filter(power >= 0.99) %>%
+  slice(1)
+```
+
+```{r}
+# ══════════════════════════════════════════════════════════════════════════════
+# MODEL DIAGNOSTICS
+# ══════════════════════════════════════════════════════════════════════════════
+ 
+library(tidyverse)
+ 
+# ── 1. Base R diagnostic plots (residuals, QQ, scale-location, leverage) ──────
+par(mfrow = c(2, 2))
+plot(mod1, main = "Model 1: log_weight * concentration")
+ 
+par(mfrow = c(2, 2))
+plot(mod2, main = "Model 2: log_weight + concentration")
+ 
+par(mfrow = c(2, 2))
+plot(mod3, main = "Model 3: concentration only")
+ 
+par(mfrow = c(2, 2))
+plot(mod4, main = "Model 4: log_weight only")
+ 
+par(mfrow = c(1, 1))   # reset
+ 
+# ── 2. Residuals vs fitted for each model side by side ───────────────────────
+diag_dat <- bind_rows(
+  tibble(model = "mod1: weight * conc",
+         fitted = fitted(mod1), resid = resid(mod1)),
+  tibble(model = "mod2: weight + conc",
+         fitted = fitted(mod2), resid = resid(mod2)),
+  tibble(model = "mod3: conc only",
+         fitted = fitted(mod3), resid = resid(mod3)),
+  tibble(model = "mod4: weight only",
+         fitted = fitted(mod4), resid = resid(mod4))
+)
+ 
+ggplot(diag_dat, aes(x = fitted, y = resid)) +
+  geom_point(size = 2, alpha = 0.7) +
+  geom_hline(yintercept = 0, linetype = "dashed", colour = "red") +
+  geom_smooth(method = "loess", se = FALSE, colour = "blue", linewidth = 0.8) +
+  facet_wrap(~ model, scales = "free", ncol = 2) +
+  labs(x = "Fitted values", y = "Residuals") +
+  theme_classic(base_size = 11) +
+  theme(strip.text = element_text(face = "bold", size = 9),
+        strip.background = element_rect(fill = "grey92", colour = NA))
+ 
+ggsave("plots/residuals_vs_fitted.png", width = 10, height = 7,
+       units = "in", dpi = 300, bg = "white")
+ 
+# ── 3. QQ plots for each model ────────────────────────────────────────────────
+par(mfrow = c(2, 2))
+qqnorm(resid(mod1), main = "QQ: mod1 weight * conc"); qqline(resid(mod1))
+qqnorm(resid(mod2), main = "QQ: mod2 weight + conc"); qqline(resid(mod2))
+qqnorm(resid(mod3), main = "QQ: mod3 conc only");     qqline(resid(mod3))
+qqnorm(resid(mod4), main = "QQ: mod4 weight only");   qqline(resid(mod4))
+par(mfrow = c(1, 1))
+ 
+# ── 4. Summary statistics for each model ─────────────────────────────────────
+cat("\n── Model 1: log_weight * concentration ──────────────\n")
+cat("Residual df:", df.residual(mod1), "\n")
+cat("R-squared:  ", round(summary(mod1)$r.squared, 3), "\n")
+cat("AIC:        ", round(AIC(mod1), 2), "\n")
+ 
+cat("\n── Model 2: log_weight + concentration ──────────────\n")
+cat("Residual df:", df.residual(mod2), "\n")
+cat("R-squared:  ", round(summary(mod2)$r.squared, 3), "\n")
+cat("AIC:        ", round(AIC(mod2), 2), "\n")
+ 
+cat("\n── Model 3: concentration only ──────────────────────\n")
+cat("Residual df:", df.residual(mod3), "\n")
+cat("R-squared:  ", round(summary(mod3)$r.squared, 3), "\n")
+cat("AIC:        ", round(AIC(mod3), 2), "\n")
+ 
+cat("\n── Model 4: log_weight only ─────────────────────────\n")
+cat("Residual df:", df.residual(mod4), "\n")
+cat("R-squared:  ", round(summary(mod4)$r.squared, 3), "\n")
+cat("AIC:        ", round(AIC(mod4), 2), "\n")
+ 
+# ── 5. Formal test for normality of residuals (Shapiro-Wilk) ─────────────────
+# Note: with n = 12 this test has very low power — use as indicative only
+cat("\n── Shapiro-Wilk normality test on residuals ─────────\n")
+cat("mod1:", shapiro.test(resid(mod1))$p.value, "\n")
+cat("mod2:", shapiro.test(resid(mod2))$p.value, "\n")
+cat("mod3:", shapiro.test(resid(mod3))$p.value, "\n")
+cat("mod4:", shapiro.test(resid(mod4))$p.value, "\n")
+ 
+# ── 6. Check for influential observations (Cook's distance) ───────────────────
+# With n = 12 any Cook's D > 1 is worth investigating
+par(mfrow = c(1, 2))
+plot(cooks.distance(mod2), type = "h", main = "Cook's distance — mod2",
+     ylab = "Cook's D", xlab = "Observation")
+abline(h = 1, lty = 2, col = "red")
+ 
+plot(cooks.distance(mod1), type = "h", main = "Cook's distance — mod1",
+     ylab = "Cook's D", xlab = "Observation")
+abline(h = 1, lty = 2, col = "red")
+par(mfrow = c(1, 1))
+ 
+# ── 7. Confidence intervals on parameter estimates ────────────────────────────
+cat("\n── 95% CI on model parameters ───────────────────────\n")
+cat("\nmod1:\n"); print(round(confint(mod1), 3))
+cat("\nmod2:\n"); print(round(confint(mod2), 3))
+cat("\nmod3:\n"); print(round(confint(mod3), 3))
+cat("\nmod4:\n"); print(round(confint(mod4), 3))
 ```
 
 
