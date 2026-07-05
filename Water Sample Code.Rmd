@@ -396,23 +396,53 @@ anova(mod2, mod4)
 ```{r}
 # Update mod_best based on selection results above
 mod_best <- mod2   # placeholder — update as needed
- 
+
 summary(mod_best)
+```
+```{r}
 anova(mod_best)
- 
+```
+```{r}
 # ── Check assumptions ────────────────────────────────────────────────────────
 par(mfrow = c(2, 2))
 plot(mod_best)
- 
+```
+```{r}
 # ── Post-hoc pairwise comparisons between concentration levels ────────────────
 emmeans(mod_best, pairwise ~ concentration, adjust = "tukey")
- 
+```
+
+```{r} 
 # ── Plot clearance rate by concentration ─────────────────────────────────────
+# Animal IDs to highlight
+highlight_ids <- c(3362, 3346, 3348, 3338)
+
+# Create a highlighting variable
+dat1$highlight <- ifelse(dat1$animal_id %in% highlight_ids,
+                         "Produced pseudofeces", "Did not produce pseudofeces")
+
 ggplot(dat1, aes(x = concentration, y = exp(log_cr))) +
-  geom_jitter(width = 0.1, size = 3, alpha = 0.7) +
+  geom_jitter(
+    aes(colour = highlight),
+    width = 0.1,
+    size = 3,
+    alpha = 0.7
+  ) +
   stat_summary(fun = mean, geom = "point", size = 4, colour = "red") +
-  stat_summary(fun.data = mean_se, geom = "errorbar",
-               width = 0.15, colour = "red", linewidth = 0.8) +
+  stat_summary(
+    fun.data = mean_se,
+    geom = "errorbar",
+    width = 0.15,
+    colour = "red",
+    linewidth = 0.8
+  ) +
+  scale_colour_manual(
+    values = c(
+      "Produced pseudofeces" = "blue",
+      "Did not produce pseudofeces" = "black"
+               ),
+    name = "Pseudofeces production"
+    ) +
   labs(
     x = "Algae concentration treatment",
     y = "Clearance rate (mL/hr)"
@@ -481,7 +511,7 @@ power_df <- tibble(
 )
 
 power_df %>%
-  filter(power >= 0.9) %>%
+  filter(n >= 12) %>%
   slice(1)
 ```
 ```{r}
@@ -598,6 +628,23 @@ cat("\nmod2:\n"); print(round(confint(mod2), 3))
 cat("\nmod3:\n"); print(round(confint(mod3), 3))
 cat("\nmod4:\n"); print(round(confint(mod4), 3))
 ```
+
+```{r}
+dat1$highlight <- factor(dat1$highlight,
+                         levels = c("Did not produce pseudofeces",
+                                    "Produced pseudofeces"))
+
+unique(dat1$highlight)
+```
+```{r}
+tab <- table(dat1$concentration, dat1$highlight)
+
+tab
+```
+```{r}
+fisher.test(tab)
+```
+
 
 
 
