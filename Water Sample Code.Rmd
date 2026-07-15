@@ -292,6 +292,11 @@ anova(m1)
 summary(m1)
 ```
 ```{r}
+summary_df_h0$Treatment <- factor(
+  summary_df_h0$Treatment,
+  levels = c("Low", "Medium", "High", "Highest")
+)
+
 ggplot(summary_df_h0, aes(x = Treatment, y = mean_val, fill = Treatment)) + 
   geom_col() + 
   ylab("Initial algae concentration (cells/ml)") +
@@ -494,6 +499,12 @@ tibble(n = n_range, power = power_results) %>%
   labs(x = "Sample size (n)", y = "Power") +
   theme_classic()
 ```
+```{r}
+library(effectsize)
+
+cohens_f(mod2, partial = TRUE)
+```
+
 ```{r}
 power_df <- tibble(
   n = n_range,
